@@ -7,10 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.data.r2dbc.DataR2dbcTest;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import reactor.core.publisher.Mono;
@@ -32,7 +29,7 @@ public class ProductRepositoryTest {
     private ProductRepository repository;
 
     @Test
-    void givenProduct_whenSaveAndFind_thenReturnSavedProduct(){
+    void givenProduct_whenSaveAndFind_thenReturnSavedProduct() {
         // given
         Product inserted = repository.save(buildProduct()).block();
 
@@ -52,7 +49,7 @@ public class ProductRepositoryTest {
                 .verify();
     }
 
-    private Product buildProduct(){
+    private Product buildProduct() {
         Product product = new Product();
         product.setUuid(UUID);
         product.setName(TEST_PRODUCT);

@@ -1,14 +1,8 @@
 package com.nordcloud.kafkaservice;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-import java.time.Duration;
-import java.util.*;
-
 import com.nordcloud.kafkaservice.mapper.ProductMapper;
 import com.nordcloud.kafkaservice.model.dto.ProductDto;
 import com.nordcloud.kafkaservice.repository.ProductRepository;
-import com.nordcloud.kafkaservice.service.KafkaConsumerService;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.RecordMetadata;
@@ -17,10 +11,7 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.kafka.core.reactive.ReactiveKafkaConsumerTemplate;
 import org.springframework.kafka.core.reactive.ReactiveKafkaProducerTemplate;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
@@ -28,20 +19,24 @@ import org.springframework.kafka.support.serializer.JsonSerializer;
 import org.springframework.kafka.test.condition.EmbeddedKafkaCondition;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
-
 import reactor.core.publisher.Mono;
 import reactor.kafka.receiver.ReceiverOptions;
 import reactor.kafka.sender.SenderOptions;
 import reactor.kafka.sender.SenderResult;
 import reactor.test.StepVerifier;
 
+import java.time.Duration;
+import java.util.Collections;
+import java.util.Map;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
 @EmbeddedKafka(topics = ReactiveKafkaIntegrationTest.TEST_TOPIC, partitions = 1)
 public class ReactiveKafkaIntegrationTest {
 
+    public static final String TEST_TOPIC = "testTopic";
     private static final ProductDto DEFAULT_VALUE = ProductDto.builder()
             .uuid("1").name("TestProduct").description("Test Description").price(1D).build();
-    public static final String TEST_TOPIC = "testTopic";
-
     private static final Duration DEFAULT_VERIFY_TIMEOUT = Duration.ofSeconds(10);
 
     private ReactiveKafkaConsumerTemplate<String, ProductDto> reactiveKafkaConsumerTemplate;
@@ -54,9 +49,21 @@ public class ReactiveKafkaIntegrationTest {
     @Mock
     private ProductMapper mapper;
 
+    private static ReceiverOptions<String, ProductDto> setupReceiverOptionsWithDefaultTopic(
+            Map<String, Object> consumerProps) {
+
+        ReceiverOptions<String, ProductDto> basicReceiverOptions = ReceiverOptions.create(consumerProps);
+        return basicReceiverOptions
+                .consumerProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
+                .addAssignListener(p -> assertThat(p.iterator().next().topicPartition().topic())
+                        .isEqualTo(TEST_TOPIC))
+                .subscription(Collections.singletonList(TEST_TOPIC));
+    }
+
     @BeforeEach
     public void setUp() {
-        this.reactiveKafkaProducerTemplate = new ReactiveKafkaProducerTemplate<>(setupSenderOptionsWithDefaultTopic());Map<String, Object> consumerProps = KafkaTestUtils
+        this.reactiveKafkaProducerTemplate = new ReactiveKafkaProducerTemplate<>(setupSenderOptionsWithDefaultTopic());
+        Map<String, Object> consumerProps = KafkaTestUtils
                 .consumerProps("kafka-service-consumer-group", "false", EmbeddedKafkaCondition.getBroker());
         consumerProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         consumerProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
@@ -92,23 +99,13 @@ public class ReactiveKafkaIntegrationTest {
                 .thenCancel()
                 .verify(DEFAULT_VERIFY_TIMEOUT);
     }
+
     private SenderOptions<String, ProductDto> setupSenderOptionsWithDefaultTopic() {
         Map<String, Object> senderProps =
                 KafkaTestUtils.producerProps(EmbeddedKafkaCondition.getBroker().getBrokersAsString());
         senderProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         senderProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
         return SenderOptions.create(senderProps);
-    }
-
-    private static ReceiverOptions<String, ProductDto> setupReceiverOptionsWithDefaultTopic(
-            Map<String, Object> consumerProps) {
-
-        ReceiverOptions<String, ProductDto> basicReceiverOptions = ReceiverOptions.create(consumerProps);
-        return basicReceiverOptions
-                .consumerProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
-                .addAssignListener(p -> assertThat(p.iterator().next().topicPartition().topic())
-                        .isEqualTo(TEST_TOPIC))
-                .subscription(Collections.singletonList(TEST_TOPIC));
     }
 
 }

@@ -13,9 +13,7 @@ import org.springframework.kafka.core.reactive.ReactiveKafkaConsumerTemplate;
 import org.springframework.stereotype.Service;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
-import reactor.kafka.receiver.ReceiverRecord;
 import reactor.util.retry.Retry;
 
 import java.time.Duration;
@@ -48,7 +46,7 @@ public class KafkaConsumerService {
         return consumeProducts().subscribe();
     }
 
-    public Flux<List<Product>> consumeProducts(){
+    public Flux<List<Product>> consumeProducts() {
         return reactiveKafkaConsumerTemplate
                 .receiveAutoAck()
                 .doOnError(error -> log.error("Error receiving event, will retry", error)) // log error in case of receiving issues
